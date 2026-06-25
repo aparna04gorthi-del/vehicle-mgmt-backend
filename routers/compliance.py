@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Compliance
+from auth_utils import require_roles
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date
@@ -18,11 +19,11 @@ class ComplianceCreate(BaseModel):
     remarks: Optional[str] = None
 
 @router.get("/")
-def get_compliance(db: Session = Depends(get_db)):
+def get_compliance(db: Session = Depends(get_db), current_user=Depends(require_roles('admin', 'fleet_manager'))):
     return db.query(Compliance).all()
 
 @router.post("/")
-def create_compliance(compliance: ComplianceCreate, db: Session = Depends(get_db)):
+def create_compliance(compliance: ComplianceCreate, db: Session = Depends(get_db), current_user=Depends(require_roles('admin', 'fleet_manager'))):
     db_compliance = Compliance(**compliance.model_dump())
     db.add(db_compliance)
     db.commit()
@@ -30,7 +31,7 @@ def create_compliance(compliance: ComplianceCreate, db: Session = Depends(get_db
     return db_compliance
 
 @router.put("/{compliance_id}")
-def update_compliance(compliance_id: uuid.UUID, compliance: ComplianceCreate, db: Session = Depends(get_db)):
+def update_compliance(compliance_id: uuid.UUID, compliance: ComplianceCreate, db: Session = Depends(get_db), current_user=Depends(require_roles('admin', 'fleet_manager'))):
     db_compliance = db.query(Compliance).filter(Compliance.compliance_id == compliance_id).first()
     if not db_compliance:
         raise HTTPException(status_code=404, detail="Compliance record not found")
@@ -41,7 +42,7 @@ def update_compliance(compliance_id: uuid.UUID, compliance: ComplianceCreate, db
     return db_compliance
 
 @router.delete("/{compliance_id}")
-def delete_compliance(compliance_id: uuid.UUID, db: Session = Depends(get_db)):
+def delete_compliance(compliance_id: uuid.UUID, db: Session = Depends(get_db), current_user=Depends(require_roles('admin'))):
     db_compliance = db.query(Compliance).filter(Compliance.compliance_id == compliance_id).first()
     if not db_compliance:
         raise HTTPException(status_code=404, detail="Compliance record not found")

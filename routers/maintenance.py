@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Maintenance
+from auth_utils import require_roles
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date
@@ -17,20 +18,23 @@ class MaintenanceCreate(BaseModel):
     vendor: Optional[str] = None
     remarks: Optional[str] = None
 
+# READ - admin, fleet_manager, accounts
 @router.get("/")
-def get_maintenance(db: Session = Depends(get_db)):
+def get_maintenance(db: Session = Depends(get_db), current_user=Depends(require_roles('admin', 'fleet_manager', 'accounts'))):
     return db.query(Maintenance).all()
 
+# CREATE - admin, fleet_manager
 @router.post("/")
-def create_maintenance(maintenance: MaintenanceCreate, db: Session = Depends(get_db)):
+def create_maintenance(maintenance: MaintenanceCreate, db: Session = Depends(get_db), current_user=Depends(require_roles('admin', 'fleet_manager'))):
     db_maintenance = Maintenance(**maintenance.model_dump())
     db.add(db_maintenance)
     db.commit()
     db.refresh(db_maintenance)
     return db_maintenance
 
+# UPDATE - admin, fleet_manager
 @router.put("/{maintenance_id}")
-def update_maintenance(maintenance_id: uuid.UUID, maintenance: MaintenanceCreate, db: Session = Depends(get_db)):
+def update_maintenance(maintenance_id: uuid.UUID, maintenance: MaintenanceCreate, db: Session = Depends(get_db), current_user=Depends(require_roles('admin', 'fleet_manager'))):
     db_maintenance = db.query(Maintenance).filter(Maintenance.maintenance_id == maintenance_id).first()
     if not db_maintenance:
         raise HTTPException(status_code=404, detail="Maintenance record not found")
@@ -40,8 +44,9 @@ def update_maintenance(maintenance_id: uuid.UUID, maintenance: MaintenanceCreate
     db.refresh(db_maintenance)
     return db_maintenance
 
+# DELETE - admin only
 @router.delete("/{maintenance_id}")
-def delete_maintenance(maintenance_id: uuid.UUID, db: Session = Depends(get_db)):
+def delete_maintenance(maintenance_id: uuid.UUID, db: Session = Depends(get_db), current_user=Depends(require_roles('admin'))):
     db_maintenance = db.query(Maintenance).filter(Maintenance.maintenance_id == maintenance_id).first()
     if not db_maintenance:
         raise HTTPException(status_code=404, detail="Maintenance record not found")

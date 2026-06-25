@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from models import FuelEntry
+from auth_utils import require_roles
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date
@@ -17,20 +18,23 @@ class FuelCreate(BaseModel):
     fuel_station: Optional[str] = None
     payment_mode: Optional[str] = None
 
+# READ - admin, fleet_manager, accounts
 @router.get("/")
-def get_fuel_entries(db: Session = Depends(get_db)):
+def get_fuel_entries(db: Session = Depends(get_db), current_user=Depends(require_roles('admin', 'fleet_manager', 'accounts'))):
     return db.query(FuelEntry).all()
 
+# CREATE - admin, fleet_manager
 @router.post("/")
-def create_fuel_entry(fuel: FuelCreate, db: Session = Depends(get_db)):
+def create_fuel_entry(fuel: FuelCreate, db: Session = Depends(get_db), current_user=Depends(require_roles('admin', 'fleet_manager'))):
     db_fuel = FuelEntry(**fuel.model_dump())
     db.add(db_fuel)
     db.commit()
     db.refresh(db_fuel)
     return db_fuel
 
+# UPDATE - admin, fleet_manager
 @router.put("/{fuel_id}")
-def update_fuel_entry(fuel_id: uuid.UUID, fuel: FuelCreate, db: Session = Depends(get_db)):
+def update_fuel_entry(fuel_id: uuid.UUID, fuel: FuelCreate, db: Session = Depends(get_db), current_user=Depends(require_roles('admin', 'fleet_manager'))):
     db_fuel = db.query(FuelEntry).filter(FuelEntry.fuel_id == fuel_id).first()
     if not db_fuel:
         raise HTTPException(status_code=404, detail="Fuel entry not found")
@@ -40,8 +44,9 @@ def update_fuel_entry(fuel_id: uuid.UUID, fuel: FuelCreate, db: Session = Depend
     db.refresh(db_fuel)
     return db_fuel
 
+# DELETE - admin only
 @router.delete("/{fuel_id}")
-def delete_fuel_entry(fuel_id: uuid.UUID, db: Session = Depends(get_db)):
+def delete_fuel_entry(fuel_id: uuid.UUID, db: Session = Depends(get_db), current_user=Depends(require_roles('admin'))):
     db_fuel = db.query(FuelEntry).filter(FuelEntry.fuel_id == fuel_id).first()
     if not db_fuel:
         raise HTTPException(status_code=404, detail="Fuel entry not found")

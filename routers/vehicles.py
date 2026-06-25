@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Vehicle
+from auth_utils import get_current_user, require_roles
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date
@@ -23,20 +24,25 @@ class VehicleCreate(BaseModel):
     rc_no: Optional[str] = None
     rc_expiry: Optional[date] = None
 
+# READ - fleet_manager, admin, site_manager can view
 @router.get("/")
-def get_vehicles(db: Session = Depends(get_db)):
+def get_vehicles(db: Session = Depends(get_db), current_user=Depends(require_roles('admin', 'fleet_manager', 'site_manager'))):
+    if current_user.role == 'site_manager':
+        return db.query(Vehicle).filter(Vehicle.assigned_site == current_user.assigned_site).all()
     return db.query(Vehicle).all()
 
+# CREATE - only admin and fleet_manager
 @router.post("/")
-def create_vehicle(vehicle: VehicleCreate, db: Session = Depends(get_db)):
+def create_vehicle(vehicle: VehicleCreate, db: Session = Depends(get_db), current_user=Depends(require_roles('admin', 'fleet_manager'))):
     db_vehicle = Vehicle(**vehicle.model_dump())
     db.add(db_vehicle)
     db.commit()
     db.refresh(db_vehicle)
     return db_vehicle
 
+# UPDATE - only admin and fleet_manager
 @router.put("/{vehicle_id}")
-def update_vehicle(vehicle_id: uuid.UUID, vehicle: VehicleCreate, db: Session = Depends(get_db)):
+def update_vehicle(vehicle_id: uuid.UUID, vehicle: VehicleCreate, db: Session = Depends(get_db), current_user=Depends(require_roles('admin', 'fleet_manager'))):
     db_vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
     if not db_vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")
@@ -46,8 +52,9 @@ def update_vehicle(vehicle_id: uuid.UUID, vehicle: VehicleCreate, db: Session = 
     db.refresh(db_vehicle)
     return db_vehicle
 
+# DELETE - only admin
 @router.delete("/{vehicle_id}")
-def delete_vehicle(vehicle_id: uuid.UUID, db: Session = Depends(get_db)):
+def delete_vehicle(vehicle_id: uuid.UUID, db: Session = Depends(get_db), current_user=Depends(require_roles('admin'))):
     db_vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
     if not db_vehicle:
         raise HTTPException(status_code=404, detail="Vehicle not found")
