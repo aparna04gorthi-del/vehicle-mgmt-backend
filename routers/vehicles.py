@@ -4,6 +4,7 @@ from database import get_db
 from models import Vehicle
 from pydantic import BaseModel
 from typing import Optional
+from datetime import date
 import uuid
 
 router = APIRouter(prefix="/vehicles", tags=["Vehicles"])
@@ -19,6 +20,8 @@ class VehicleCreate(BaseModel):
     ownership_type: Optional[str] = None
     status: Optional[str] = None
     assigned_site: Optional[str] = None
+    rc_no: Optional[str] = None
+    rc_expiry: Optional[date] = None
 
 @router.get("/")
 def get_vehicles(db: Session = Depends(get_db)):

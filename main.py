@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
 import models
-from routers import vehicles, drivers, trips, fuel, maintenance, compliance
+from routers import vehicles, drivers, trips, fuel, maintenance, compliance, auth
 
 Base.metadata.create_all(bind=engine)
 
@@ -16,6 +16,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(vehicles.router)
 app.include_router(drivers.router)
 app.include_router(trips.router)
