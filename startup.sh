@@ -1,4 +1,3 @@
 #!/bin/bash
-pip install -r /home/site/wwwroot/requirements.txt
-cd /home/site/wwwroot
-gunicorn main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --timeout 120
+pip install uvicorn fastapi sqlalchemy psycopg2-binary python-dotenv python-jose passlib bcrypt python-multipart
+uvicorn main:app --host 0.0.0.0 --port 8000
