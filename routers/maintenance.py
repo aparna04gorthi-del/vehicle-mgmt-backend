@@ -34,7 +34,7 @@ def create_maintenance(maintenance: MaintenanceCreate, db: Session = Depends(get
 
 # UPDATE - admin, fleet_manager
 @router.put("/{maintenance_id}")
-def update_maintenance(maintenance_id: uuid.UUID, maintenance: MaintenanceCreate, db: Session = Depends(get_db), current_user=Depends(require_roles('admin', 'fleet_manager'))):
+def update_maintenance(maintenance_id: uuid.UUID, maaintenance: MaintenanceCreate, db: Session = Depends(get_db), current_user=Depends(require_roles('admin', 'fleet_manager'))):
     db_maintenance = db.query(Maintenance).filter(Maintenance.maintenance_id == maintenance_id).first()
     if not db_maintenance:
         raise HTTPException(status_code=404, detail="Maintenance record not found")
